@@ -15,7 +15,7 @@ It produces the image referenced in `docker-compose.yaml` and wraps the upstream
 
 ```
 ├─ Dockerfile                 → Extends the base CMDBuild image, installs psql client, copies patches & entrypoint
-├─ entry.sh                   → Initialization script executed by the container
+├─ entrypoint/entrypoint.sh   → Initialization script executed by the container
 ├─ docker-compose.yaml        → Reference Compose configuration (PostgreSQL + CMDBuild containers)
 ├─ patches/oauth/*.class      → Patched Authentik-ready OAuth classes
 └─ conf/, lib/…               → Optional extra Tomcat / CMDBuild configuration files
@@ -36,6 +36,7 @@ The Compose file exports the variables below to the CMDBuild container; they can
 | `POSTGRES_PASSWORD` | `postgres` | Password for the admin role |
 | `CMDBUILD_DUMP` | `demo.dump.xz` | Demo data file restored by the base image (optional) |
 | `JAVA_OPTS` | `-Xmx6000m -Xms3000m` | JVM tuning for Tomcat |
+| `CMDBUILD_DNS` | `cmdbuild.example.com` | Optional hostname used to configure Tomcat as HTTPS reverse proxy |
 | `AUTHENTIK_SERVICE_URI` | `https://dns/application/o/cmdbuild` | Authentik application base URL used to fetch discovery metadata |
 | `AUTHENTIK_OAUTH_PROTOCOL` | `OP_CUSTOM` (🔥 recommended) | CMDBuild protocol enum. Must be `OP_CUSTOM` for Authentik |
 | `AUTHENTIK_CMDBUILD_REDIRECT_URL` | `http://ip:8080/cmdbuild` | Redirect URI registered in Authentik |
@@ -53,12 +54,13 @@ The Compose file exports the variables below to the CMDBuild container; they can
 
 ---
 
-## Entry point behaviour (`entry.sh`)
+## Entry point behaviour (`entrypoint/entrypoint.sh`)
 
 On container start the script:
 
 1. Regenerates `conf/cmdbuild/database.conf` with the database credentials taken from env variables.
 2. If it is the first boot (flag file absent):
+   - If `CMDBUILD_DNS` is set, rewrites Tomcat’s `server.xml` connector so that the instance works correctly behind an HTTPS reverse proxy.
    - Runs `cmdbuild.sh dbconfig drop` and `cmdbuild.sh dbconfig create empty` to ensure a clean schema.
    - Launches Tomcat in background, polls the UI and REST endpoints until they become reachable.
    - Uses `cmdbuild.sh restws setconfig` to push all Authentik-related settings (client, secret, scope, etc.).
@@ -118,3 +120,11 @@ Relevant messages you should see on the first boot:
 4. After authentication, CMDBuild maps the user according to the configured attribute (`preferred_username`, `email`, …).
 
 Enjoy your Authentik-enabled CMDBuild environment! 🚀
+
+---
+
+## Reverse proxy support
+
+- Set `CMDBUILD_DNS` to the public hostname exposed by your HTTPS reverse proxy (for example `cmdbuild.example.com`).
+- On the first boot the entrypoint rewrites Tomcat’s `server.xml` connector so that `proxyName`, `proxyPort=443` and `scheme=https` are in place, preventing mixed-content issues and making CMDBuild generate correct URLs behind the proxy.
+- Leave `CMDBUILD_DNS` unset to keep the stock HTTP connector (default port 8080, no proxy headers).

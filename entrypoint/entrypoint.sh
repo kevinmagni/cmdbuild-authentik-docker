@@ -11,6 +11,23 @@ echo "=== CMDBUILD CONTAINER INITIALIZATION START ==="
 if [ ! -f "$FLAG_FILE" ]; then
     echo "→ Prima configurazione CMDBuild..."
 
+    if [ -n "$CMDBUILD_DNS" ]; then
+      echo "🔄 Cambio DNS per reverse proxy: ${CMDBUILD_DNS}"
+      SERVER_XML="$TOMCAT_HOME/conf/server.xml"
+
+      # Sostituisce il connettore HTTP con uno configurato per HTTPS e reverse proxy
+      perl -0777 -pi -e '
+        s#<Connector\s+port="8080"[^>]*redirectPort="8443"\s*/>#
+          <Connector port="8080" protocol="HTTP/1.1"
+                     connectionTimeout="20000"
+                     redirectPort="8443"
+                     maxParameterCount="1000"
+                     proxyName="'$CMDBUILD_DNS'"
+                     proxyPort="443"
+                     scheme="https" />#xms;
+      ' "$SERVER_XML"
+    fi
+
     # ✅ Ricreo database (drop + create empty)
     echo "→ Ricreo database (drop + create empty)..."
     bash $CMDBUILD_CLI dbconfig drop || echo "(Database non esistente, ignoro errore)"

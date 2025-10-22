@@ -3,7 +3,7 @@ services:
         image: postgis/postgis:17-3.5-alpine
         container_name: cmdbuild_db
         volumes:
-            - cmdbuild-db-test:/var/lib/postgresql/data
+            - cmdbuild-db:/var/lib/postgresql/data
         ports:
             - 5432:5432
         environment:
@@ -32,13 +32,14 @@ services:
             - 8080:8080
         restart: always  
         volumes:
-            - cmdbuild-tomcat-test:/usr/local/tomcat
+            - cmdbuild-tomcat:/usr/local/tomcat
         environment:
             - POSTGRES_USER=postgres
             - POSTGRES_PASSWORD=postgres
             - POSTGRES_PORT=5432
             - POSTGRES_HOST=cmdbuild_db
-            - POSTGRES_DB=cmdbuild_4
+            - POSTGRES_DB=cmdbuild
+            - CMDBUILD_DNS=dns
             - CMDBUILD_DUMP=demo.dump.xz
             - JAVA_OPTS=-Xmx6000m -Xms3000m
             - AUTHENTIK_SERVICE_URI=https://dns/application/o/cmdbuild
@@ -63,7 +64,7 @@ services:
             start_period: 120s
 
 volumes:
-    cmdbuild-db-test:
-      name: cmdbuild-db-test
-    cmdbuild-tomcat-test:
-      name: cmdbuild-tomcat-test
+    cmdbuild-db:
+      name: cmdbuild-db
+    cmdbuild-tomcat:
+      name: cmdbuild-tomcat
