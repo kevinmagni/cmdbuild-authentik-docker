@@ -10,6 +10,21 @@ echo "=== CMDBUILD CONTAINER INITIALIZATION START ==="
 # Esegui setup solo la prima volta
 if [ ! -f "$FLAG_FILE" ]; then
     echo "→ Prima configurazione CMDBuild..."
+    
+    echo "→ Configurazione Database"
+
+   cat > /usr/local/tomcat/conf/cmdbuild/database.conf <<EOF
+db.url=jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+db.username=${POSTGRES_USER}
+db.password=${POSTGRES_PASSWORD}
+db.admin.username=${POSTGRES_USER}
+db.admin.password=${POSTGRES_PASSWORD}
+ext=plpgsql
+EOF
+
+    echo "✅ File database.conf aggiornato:"
+    cat /usr/local/tomcat/conf/cmdbuild/database.conf
+    echo "----------------------------------------"
 
     if [ -n "$CMDBUILD_DNS" ]; then
       echo "🔄 Cambio DNS per reverse proxy: ${CMDBUILD_DNS}"
